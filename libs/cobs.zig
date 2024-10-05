@@ -1,17 +1,93 @@
+/// COBS (Consisten Overhead Byte Stuffing)
+/// data -                [12, 44, 00, 04, 00, 00, 01]
+/// encoded data -    [03, 12, 44, 02, 04, 01, 02, 01]
+/// packetized data - [03, 12, 44, 02, 04, 01, 02, 01, 00]
+/// encoding puts index of next zero instead of zero
+/// packetizing adds zero at the end
+///
+/// this lib exposes 2 functions 'cobs' and 'cobs_short'
+/// 'cobs' encode message with any length, this will also have
+/// uncertainty about the length of resulting message
+/// 'cobs_short' will handle only messages with 'source_max_len' (254) length
+/// it limits the type of message you can pass but adds certainty about the
+/// maximum length of message
+/// it also can be decoded with same function as default 'cobs'
 const std = @import("std");
 
-pub const Error = COBSError || COBSLenError;
+// pub const Error = COBSError || COBSLenError;
 
-pub const COBSError = error{
+pub const Error = error{
     ZeroByteNotFound,
     OverheadByteOutOfBounds,
     PayloadTooLong,
+    SourceCannotBeZero,
+    DestinationTooShort,
 };
 
-pub const COBSLenError = error{
-    PayloadTooShort,
-    PayloadTooLong,
-};
+// pub const COBSLenError = error{
+//     PayloadTooShort,
+//     PayloadTooLong,
+// };
+
+pub const source_max_len = 254;
+
+/// finds maximum possible destination length
+/// needed to create slice that will be passed to 'cobs' function
+/// at least it needs +2 for overhead byte and zero byte at the end
+/// also we require additional additional +1 on every 255 bytes (at max)
+pub fn get_max_dest_len(source: []u8) usize {
+    return source.len + 2 + @as(usize, source.len / 255);
+}
+
+pub fn encode(source: []u8, dest: []u8) Error![]u8 {
+    if (dest.len < get_max_dest_len(source)) {
+        return COBSError.DestinationTooShort;
+    }
+
+    return dest[0..dest.len-1];
+}
+
+// test "encode" {
+//
+//     encode();
+// }
+
+/// encode short slice of bytes (<= 254)
+/// this function is needed because encoding short messages
+/// require less logic is more efficient
+/// 256 - overhead byte - zero byte
+/// [overhead byte, data, zero byte]
+pub fn encode_short(source: []u8, dest: []u8) Error {
+    if (source.len <= source_max_len) {
+        return COBSError.PayloadTooLong;
+    }
+
+    // 2 for overhead byte and zero byte
+    const dest_len = source.len + 2;
+    if (dest.len < dest_len) {
+        return COBSError.DestinationTooShort;
+    }
+    if (source.len == 0) {
+        return COBSError.SourceCannotBeZero;
+    }
+
+    // last byte of destination
+    dest[source.len + 1] = 0;
+
+    // iterate over source backwards
+    var i = source.len - 1;
+    while (i >= 0) : (i -= 1) {
+         dest[i + 1] = source[i];
+    }
+
+    return dest[0..dest.len]; 
+}
+
+test "encode_short" {
+    var source = [_]u8{1,2,3,4};
+    var dest: [256]u8 = undefined;
+    try encode_short(&source, &dest);
+}
 
 // COBS encodeing wiht length of original message
 pub fn encode_len(source: []u8, dest: []u8) Error![]u8 {
@@ -122,6 +198,34 @@ fn decode(reader: std.io.AnyReader, buf: []u8) anyerror![]u8 {
     if (!found_zero_byte) return COBSError.ZeroByteNotFound;
     return buf[0..j];
 }
+
+test "get_max_dest_len" {
+    // 0 length input
+    var arr = [_]u8{};
+    var len = get_max_dest_len(&arr);
+    try std.testing.expectEqual(2, len);
+
+    // non-zero but less the 255
+    var arr2: [100]u8 = undefined;
+    len = get_max_dest_len(&arr2);
+    try std.testing.expectEqual(102, len);
+
+    // max length 254
+    var arr3: [254]u8 = undefined;
+    len = get_max_dest_len(&arr3);
+    try std.testing.expectEqual(256, len);
+
+    // 255
+    var arr4: [255]u8 = undefined;
+    len = get_max_dest_len(&arr4);
+    try std.testing.expectEqual(258, len);
+
+    // 1000
+    var arr5: [1000]u8 = undefined;
+    len = get_max_dest_len(&arr5);
+    try std.testing.expectEqual(1005, len);
+}
+
 
 test "encode_len" {
     std.debug.print("bytes with one zero\n", .{});
