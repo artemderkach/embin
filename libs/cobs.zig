@@ -13,6 +13,9 @@
 /// maximum length of message
 /// it also can be decoded with same function as default 'cobs'
 const std = @import("std");
+const expect = std.testing.expect;
+const expectEqual = std.testing.expectEqual;
+const expectEqualSlices = std.testing.expectEqualSlices;
 
 // pub const Error = COBSError || COBSLenError;
 
@@ -20,8 +23,12 @@ pub const Error = error{
     ZeroByteNotFound,
     OverheadByteOutOfBounds,
     PayloadTooLong,
+    PayloadCannotBeEmpty,
     SourceCannotBeZero,
     DestinationTooShort,
+
+    PayloadTooShort,
+    // PayloadTooLong,
 };
 
 // pub const COBSLenError = error{
@@ -41,7 +48,7 @@ pub fn get_max_dest_len(source: []u8) usize {
 
 pub fn encode(source: []u8, dest: []u8) Error![]u8 {
     if (dest.len < get_max_dest_len(source)) {
-        return COBSError.DestinationTooShort;
+        return Error.DestinationTooShort;
     }
 
     return dest[0..dest.len-1];
@@ -57,43 +64,145 @@ pub fn encode(source: []u8, dest: []u8) Error![]u8 {
 /// require less logic is more efficient
 /// 256 - overhead byte - zero byte
 /// [overhead byte, data, zero byte]
-pub fn encode_short(source: []u8, dest: []u8) Error {
-    if (source.len <= source_max_len) {
-        return COBSError.PayloadTooLong;
+/// returned slice is the 
+pub fn encode_short(source: []u8, dest: []u8) Error![]u8 {
+    if (source.len > source_max_len) {
+        return Error.PayloadTooLong;
     }
 
     // 2 for overhead byte and zero byte
-    const dest_len = source.len + 2;
-    if (dest.len < dest_len) {
-        return COBSError.DestinationTooShort;
+    const new_dest_len = source.len + 2;
+    if (dest.len < new_dest_len) {
+        return Error.DestinationTooShort;
     }
     if (source.len == 0) {
-        return COBSError.SourceCannotBeZero;
+        return Error.PayloadCannotBeEmpty;
     }
-
-    // last byte of destination
-    dest[source.len + 1] = 0;
 
     // iterate over source backwards
-    var i = source.len - 1;
-    while (i >= 0) : (i -= 1) {
-         dest[i + 1] = source[i];
-    }
+    var i = source.len;
+    var dest_i = source.len + 1;
 
-    return dest[0..dest.len]; 
+    // last byte of destination
+    dest[dest_i] = 0;
+
+    var last_zero_position = dest_i;
+    for (source) |_| {
+        i -= 1;
+        dest_i -= 1;
+
+        if (source[i] == 0) {
+            const diff = last_zero_position - dest_i;
+            last_zero_position = dest_i;
+            dest[dest_i] = @as(u8, @intCast(diff));
+            continue;
+        }
+
+        dest[dest_i] = source[i];
+    }
+    dest[0] = @as(u8, @intCast(last_zero_position));
+
+    return dest[0..new_dest_len]; 
 }
 
 test "encode_short" {
-    var source = [_]u8{1,2,3,4};
-    var dest: [256]u8 = undefined;
-    try encode_short(&source, &dest);
+    {
+        // empty input
+        const source = [_]u8{};
+        var dest: [256]u8 = undefined;
+        const res = encode_short(&source, &dest);
+        try expectEqual(Error.PayloadCannotBeEmpty, res);
+    }
+    {
+        // empty output
+        var source: [100]u8 = undefined;
+        var dest = [_]u8{};
+        const res = encode_short(&source, &dest);
+        try expectEqual(Error.DestinationTooShort, res);
+    }
+    {
+        // destination just a bit shorter that it need to be
+        var source: [100]u8 = undefined;
+        var dest: [101]u8 = undefined;
+        const res = encode_short(&source, &dest);
+        try expectEqual(Error.DestinationTooShort, res);
+    }
+    {
+        // source just above allowed value
+        var source: [255]u8 = undefined;
+        var dest: [256]u8 = undefined;
+        const res = encode_short(&source, &dest);
+        try expectEqual(Error.PayloadTooLong, res);
+    }
+    {
+        // source too huge
+        var source: [1000]u8 = undefined;
+        var dest: [256]u8 = undefined;
+        const res = encode_short(&source, &dest);
+        try expectEqual(Error.PayloadTooLong, res);
+    }
+    {
+        // destination is just minimum needed amount
+        var source: [100]u8 = undefined;
+        var dest: [102]u8 = undefined;
+        const res = try encode_short(&source, &dest);
+        try expectEqual(102, res.len);
+    }
+    {
+        // destination length is far bigger then source
+        var source: [100]u8 = undefined;
+        var dest: [1000]u8 = undefined;
+        const res = try encode_short(&source, &dest);
+        try expectEqual(102, res.len);
+    }
+    {
+        // source is just at its limit
+        var source: [254]u8 = undefined;
+        var dest: [256]u8 = undefined;
+        const res = try encode_short(&source, &dest);
+        try expectEqual(256, res.len);
+    }
+    {
+        // simple case without any zero bytes
+        var source  = [_]u8{1, 2, 3, 4};
+        var dest: [256]u8 = undefined;
+        const res = try encode_short(&source, &dest);
+        try expectEqualSlices(u8, &[_]u8{5, 1, 2, 3, 4, 0}, res);
+    }
+    {
+        // simple case with single zero byte
+        var source  = [_]u8{1, 2, 0, 4, 5};
+        var dest: [256]u8 = undefined;
+        const res = try encode_short(&source, &dest);
+        try expectEqualSlices(u8, &[_]u8{3, 1, 2, 3, 4, 5, 0}, res);
+    }
+    {
+        // input with single zero byte
+        var source  = [_]u8{0};
+        var dest: [256]u8 = undefined;
+        const res = try encode_short(&source, &dest);
+        try expectEqualSlices(u8, &[_]u8{1, 1, 0}, res);
+    }
+    {
+        var source  = [_]u8{0, 0};
+        var dest: [256]u8 = undefined;
+        const res = try encode_short(&source, &dest);
+        try expectEqualSlices(u8, &[_]u8{1, 1, 1, 0}, res);
+    }
+    {
+        var source  = [_]u8{0, 1, 0};
+        var dest: [256]u8 = undefined;
+        const res = try encode_short(&source, &dest);
+        try expectEqualSlices(u8, &[_]u8{1, 2, 1, 1, 0}, res);
+    }
+
 }
 
 // COBS encodeing wiht length of original message
 pub fn encode_len(source: []u8, dest: []u8) Error![]u8 {
     // 256 - (payload length) - (overhead byte) - (zero byte) 
     if (source.len > 253) {
-        return COBSLenError.PayloadTooLong;
+        return Error.PayloadTooLong;
     }
     dest[0] = @as(u8, @intCast(source.len));
     dest[source.len + 2] = 0;
@@ -136,8 +245,8 @@ pub fn decode_len(reader: std.io.AnyReader, buf: []u8) anyerror![]u8 {
     const decoded_message = try decode(reader, buf);
 
     const actual_payload_length = decoded_message.len;
-    if (prefix_payload_length < actual_payload_length) return COBSLenError.PayloadTooLong;
-    if (prefix_payload_length > actual_payload_length) return COBSLenError.PayloadTooShort;
+    if (prefix_payload_length < actual_payload_length) return Error.PayloadTooLong;
+    if (prefix_payload_length > actual_payload_length) return Error.PayloadTooShort;
 
     return buf[0..prefix_payload_length];
 }
@@ -179,7 +288,7 @@ fn decode(reader: std.io.AnyReader, buf: []u8) anyerror![]u8 {
 
         if (byte == 0) {
             if (i != next_zero_index) {
-                return COBSError.OverheadByteOutOfBounds;
+                return Error.OverheadByteOutOfBounds;
             }
 
             found_zero_byte = true;
@@ -195,7 +304,7 @@ fn decode(reader: std.io.AnyReader, buf: []u8) anyerror![]u8 {
         buf[j] = byte;
     }
 
-    if (!found_zero_byte) return COBSError.ZeroByteNotFound;
+    if (!found_zero_byte) return Error.ZeroByteNotFound;
     return buf[0..j];
 }
 
@@ -297,7 +406,7 @@ test "decode" {
     reader = stream.reader().any();
 
     var res = decode(reader, &buffer);
-    try std.testing.expectEqual(COBSError.OverheadByteOutOfBounds, res);
+    try std.testing.expectEqual(Error.OverheadByteOutOfBounds, res);
 
     std.debug.print("{s}\n", .{"next zero bytes points to out of array"});
     var buffer_input_4 = [_]u8{ 2, 2, 5, 2, 0 };
@@ -306,7 +415,7 @@ test "decode" {
     reader = stream.reader().any();
 
     res = decode(reader, &buffer);
-    try std.testing.expectEqual(COBSError.OverheadByteOutOfBounds, res);
+    try std.testing.expectEqual(Error.OverheadByteOutOfBounds, res);
 
     std.debug.print("{s}\n", .{"valid message"});
     var buffer_input_6 = [_]u8{ 1, 3, 6, 6, 4, 6, 6, 6, 0 };
@@ -380,7 +489,7 @@ test "decode_len" {
     reader = stream.reader().any();
 
     var res = decode_len(reader, &buffer);
-    try std.testing.expectEqual(COBSLenError.PayloadTooShort, res);
+    try std.testing.expectEqual(Error.PayloadTooShort, res);
 
     std.debug.print("{s}\n", .{"message too long "});
     var buffer_input_7 = [_]u8{ 1, 1, 2, 6, 0 };
@@ -389,5 +498,5 @@ test "decode_len" {
     reader = stream.reader().any();
 
     res = decode_len(reader, &buffer);
-    try std.testing.expectEqual(COBSLenError.PayloadTooLong, res);
+    try std.testing.expectEqual(Error.PayloadTooLong, res);
 }
