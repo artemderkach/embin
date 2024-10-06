@@ -152,60 +152,6 @@ pub fn encode_long(source: []u8, dest: []u8) Error![]u8 {
     return dest[0..j + 1]; 
 }
 
-
-// COBS encodeing wiht length of original message
-pub fn encode_len(source: []u8, dest: []u8) Error![]u8 {
-    // 256 - (payload length) - (overhead byte) - (zero byte) 
-    if (source.len > 253) {
-        return Error.PayloadTooLong;
-    }
-    dest[0] = @as(u8, @intCast(source.len));
-    dest[source.len + 2] = 0;
-
-    var distance: u8 = 0;
-    var i = source.len;
-    for (source) |_| {
-        i -= 1;
-
-        distance += 1;
-        if (source[i] == 0) {
-            dest[i + 2] = distance;
-            distance = 0;
-            continue;
-        }
-
-        dest[i + 2] = source[i];
-
-        if (i == 0)  break;
-    }
-
-    dest[1] = distance + 1;
-
-    return dest[0..source.len+3];
-}
-
-// COBS (Consistent Overhead Byte Stuffing) + prefix length byte
-pub fn decode_len(reader: std.io.AnyReader, buf: []u8) anyerror![]u8 {
-    // read first by which should be prefix with length of payload
-    // if there is nothing to read - then message is empty
-    const prefix_payload_length: u8 = reader.readByte() catch |err| switch (err) {
-        error.EndOfStream => {
-            return buf[0..0];
-        },
-        else => {
-            return err;
-        },
-    };
-
-    const decoded_message = try decode(reader, buf);
-
-    const actual_payload_length = decoded_message.len;
-    if (prefix_payload_length < actual_payload_length) return Error.PayloadTooLong;
-    if (prefix_payload_length > actual_payload_length) return Error.PayloadTooShort;
-
-    return buf[0..prefix_payload_length];
-}
-
 fn decode(reader: std.io.AnyReader, buf: []u8) anyerror![]u8 {
     var next_zero_index: usize = 0;
     var found_zero_byte = false;
@@ -220,6 +166,7 @@ fn decode(reader: std.io.AnyReader, buf: []u8) anyerror![]u8 {
             return err;
         },
     };
+
 
     if (overhead_byte == 0) {
         return buf[0..0];
@@ -558,67 +505,3 @@ test "decode" {
     try std.testing.expectEqual(0, res_bytes.len);
 }
 
-test "decode_len" {
-    std.debug.print("{s}\n", .{"empty input buffer"});
-    var buffer_input_0 = [_]u8{};
-    var buffer: [256]u8 = undefined;
-    var stream = std.io.fixedBufferStream(&buffer_input_0);
-    var reader = stream.reader().any();
-
-    var res_bytes = try decode_len(reader, &buffer);
-    try std.testing.expectEqual(0, res_bytes.len);
-
-    std.debug.print("{s}\n", .{"buffer with only 0 as length prefix"});
-    var buffer_input_1 = [_]u8{0};
-    buffer = undefined;
-    stream = std.io.fixedBufferStream(&buffer_input_1);
-    reader = stream.reader().any();
-
-    res_bytes = try decode_len(reader, &buffer);
-    try std.testing.expectEqual(0, res_bytes.len);
-
-    std.debug.print("{s}\n", .{"buffer with only 0 as length prefix"});
-    var buffer_input_2 = [_]u8{ 0, 0 };
-    buffer = undefined;
-    stream = std.io.fixedBufferStream(&buffer_input_2);
-    reader = stream.reader().any();
-
-    res_bytes = try decode_len(reader, &buffer);
-    try std.testing.expectEqual(0, res_bytes.len);
-
-    std.debug.print("{s}\n", .{"buffer with only 0 as length prefix"});
-    var buffer_input_3 = [_]u8{ 0, 1, 0 };
-    buffer = undefined;
-    stream = std.io.fixedBufferStream(&buffer_input_3);
-    reader = stream.reader().any();
-
-    res_bytes = try decode_len(reader, &buffer);
-    try std.testing.expectEqual(0, res_bytes.len);
-
-    std.debug.print("{s}\n", .{"valid message"});
-    var buffer_input_5 = [_]u8{ 1, 1, 1, 0 };
-    buffer = undefined;
-    stream = std.io.fixedBufferStream(&buffer_input_5);
-    reader = stream.reader().any();
-
-    res_bytes = try decode_len(reader, &buffer);
-    try std.testing.expectEqual(1, res_bytes.len);
-
-    std.debug.print("{s}\n", .{"message too short"});
-    var buffer_input_6 = [_]u8{ 9, 1, 1, 0 };
-    buffer = undefined;
-    stream = std.io.fixedBufferStream(&buffer_input_6);
-    reader = stream.reader().any();
-
-    var res = decode_len(reader, &buffer);
-    try std.testing.expectEqual(Error.PayloadTooShort, res);
-
-    std.debug.print("{s}\n", .{"message too long "});
-    var buffer_input_7 = [_]u8{ 1, 1, 2, 6, 0 };
-    buffer = undefined;
-    stream = std.io.fixedBufferStream(&buffer_input_7);
-    reader = stream.reader().any();
-
-    res = decode_len(reader, &buffer);
-    try std.testing.expectEqual(Error.PayloadTooLong, res);
-}
