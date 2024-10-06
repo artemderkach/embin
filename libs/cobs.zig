@@ -167,7 +167,6 @@ fn decode(reader: std.io.AnyReader, buf: []u8) anyerror![]u8 {
         },
     };
 
-
     if (overhead_byte == 0) {
         return buf[0..0];
     }
