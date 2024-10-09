@@ -152,62 +152,105 @@ pub fn encode_long(source: []u8, dest: []u8) Error![]u8 {
     return dest[0..j + 1]; 
 }
 
-fn decode(reader: std.io.AnyReader, buf: []u8) anyerror![]u8 {
-    var next_zero_index: usize = 0;
-    var found_zero_byte = false;
-
-    // overhead byte is the position of next 00
-    // in case there is nothing to read, check for special case with 0 value prefix
-    const overhead_byte: u8 = reader.readByte() catch |err| switch (err) {
-        error.EndOfStream => {
-            return buf[0..0];
-        },
-        else => {
-            return err;
-        },
-    };
-
-    if (overhead_byte == 0) {
-        return buf[0..0];
+pub fn decode(source: []u8, dest: []u8) Error![]u8 {
+    if (source.len < 2) {
+        return Error.PayloadTooShort;
     }
 
-    next_zero_index = overhead_byte;
-
+    // source iterator
     var i: usize = 0;
-    var j: usize = 0; // result buffer index
-    for (0..255) |_| {
-        i += 1;
-        j = i - 1;
-        const byte: u8 = reader.readByte() catch |err| switch (err) {
-            error.EndOfStream => {
-                break;
-            },
-            else => {
-                return err;
-            },
-        };
+    var offset = source[0];
+    i += 1;
 
-        if (byte == 0) {
-            if (i != next_zero_index) {
-                return Error.OverheadByteOutOfBounds;
-            }
+    // destination iterator
+    var j: usize = 0;
 
-            found_zero_byte = true;
+    for (i..source.len - 1) |_| {
+
+        std.debug.print("--> {}, {}\n", .{i, offset});
+        for (i..i + offset - 1) |k| {
+            std.debug.print("{}, {}, {}, {}\n", .{i, k, source[k], offset});
+            dest[j] = source[k];
+            j += 1;
+            i += 1;
+        }
+
+        std.debug.print("--> {}, {}\n", .{j, source[i]});
+
+        offset = source[i];
+        if (offset == 0) {
             break;
         }
 
-        if (i == next_zero_index) {
-            buf[j] = 0;
-            next_zero_index = i + @as(usize, @intCast(byte));
+        i += 1;
+
+        if (offset == 0xFF) {
             continue;
         }
 
-        buf[j] = byte;
+        dest[j] = 0;
+        j += 1;
     }
 
-    if (!found_zero_byte) return Error.ZeroByteNotFound;
-    return buf[0..j];
+    return dest[0..j - 1];
 }
+
+// fn decode(reader: std.io.AnyReader, buf: []u8) anyerror![]u8 {
+//     var next_zero_index: usize = 0;
+//     var found_zero_byte = false;
+//
+//     // overhead byte is the position of next 00
+//     // in case there is nothing to read, check for special case with 0 value prefix
+//     const overhead_byte: u8 = reader.readByte() catch |err| switch (err) {
+//         error.EndOfStream => {
+//             return buf[0..0];
+//         },
+//         else => {
+//             return err;
+//         },
+//     };
+//
+//     if (overhead_byte == 0) {
+//         return buf[0..0];
+//     }
+//
+//     next_zero_index = overhead_byte;
+//
+//     var i: usize = 0;
+//     var j: usize = 0; // result buffer index
+//     for (0..255) |_| {
+//         i += 1;
+//         j = i - 1;
+//         const byte: u8 = reader.readByte() catch |err| switch (err) {
+//             error.EndOfStream => {
+//                 break;
+//             },
+//             else => {
+//                 return err;
+//             },
+//         };
+//
+//         if (byte == 0) {
+//             if (i != next_zero_index) {
+//                 return Error.OverheadByteOutOfBounds;
+//             }
+//
+//             found_zero_byte = true;
+//             break;
+//         }
+//
+//         if (i == next_zero_index) {
+//             buf[j] = 0;
+//             next_zero_index = i + @as(usize, @intCast(byte));
+//             continue;
+//         }
+//
+//         buf[j] = byte;
+//     }
+//
+//     if (!found_zero_byte) return Error.ZeroByteNotFound;
+//     return buf[0..j];
+// }
 
 test "get_max_dest_len" {
     // 0 length input
@@ -404,103 +447,133 @@ test "encode_long" {
 }
 
 
-test "encode_len" {
-    std.debug.print("bytes with one zero\n", .{});
-    var source1 = [_]u8{0, 1, 3, 5};
-    var dest: [256]u8 = undefined;
-
-    const res1 = try encode_len(&source1, &dest);
-    try std.testing.expectEqual(7, res1.len);
-    try std.testing.expectEqual(4, res1[0]);
-    try std.testing.expectEqual(0, res1[6]);
-    try std.testing.expectEqual(1, res1[1]);
-
-    std.debug.print("no zeroes\n", .{});
-    var source2 = [_]u8{8, 1, 3, 5, 8};
-    dest = undefined;
-
-    const res2 = try encode_len(&source2, &dest);
-    try std.testing.expectEqual(8, res2.len);
-    try std.testing.expectEqual(5, res2[0]);
-    try std.testing.expectEqual(8, res2[6]);
-    try std.testing.expectEqual(0, res2[7]);
-    try std.testing.expectEqual(6, res2[1]);
-
-    std.debug.print("2 zeroes\n", .{});
-    var source3 = [_]u8{8, 0, 3, 5, 0};
-    dest = undefined;
-
-    const res3 = try encode_len(&source3, &dest);
-    try std.testing.expectEqual(8, res3.len);
-    try std.testing.expectEqual(5, res3[0]);
-    try std.testing.expectEqual(2, res3[1]);
-    try std.testing.expectEqual(3, res3[3]);
-    try std.testing.expectEqual(1, res3[6]);
-    try std.testing.expectEqual(0, res3[7]);
-}
+// test "encode_len" {
+//     std.debug.print("bytes with one zero\n", .{});
+//     var source1 = [_]u8{0, 1, 3, 5};
+//     var dest: [256]u8 = undefined;
+//
+//     const res1 = try encode_len(&source1, &dest);
+//     try std.testing.expectEqual(7, res1.len);
+//     try std.testing.expectEqual(4, res1[0]);
+//     try std.testing.expectEqual(0, res1[6]);
+//     try std.testing.expectEqual(1, res1[1]);
+//
+//     std.debug.print("no zeroes\n", .{});
+//     var source2 = [_]u8{8, 1, 3, 5, 8};
+//     dest = undefined;
+//
+//     const res2 = try encode_len(&source2, &dest);
+//     try std.testing.expectEqual(8, res2.len);
+//     try std.testing.expectEqual(5, res2[0]);
+//     try std.testing.expectEqual(8, res2[6]);
+//     try std.testing.expectEqual(0, res2[7]);
+//     try std.testing.expectEqual(6, res2[1]);
+//
+//     std.debug.print("2 zeroes\n", .{});
+//     var source3 = [_]u8{8, 0, 3, 5, 0};
+//     dest = undefined;
+//
+//     const res3 = try encode_len(&source3, &dest);
+//     try std.testing.expectEqual(8, res3.len);
+//     try std.testing.expectEqual(5, res3[0]);
+//     try std.testing.expectEqual(2, res3[1]);
+//     try std.testing.expectEqual(3, res3[3]);
+//     try std.testing.expectEqual(1, res3[6]);
+//     try std.testing.expectEqual(0, res3[7]);
+// }
 
 test "decode" {
-    std.debug.print("{s}\n", .{"empty input buffer"});
-    var buffer_input_0 = [_]u8{};
-    var buffer: [256]u8 = undefined;
-    var stream = std.io.fixedBufferStream(&buffer_input_0);
-    var reader = stream.reader().any();
+    {
+        var source = [_]u8{3, 1, 2, 3, 4, 5, 0};
+        var dest: [256]u8 = undefined;
+        const res = try decode(&source, &dest);
+        try expectEqualSlices(u8, &[_]u8{1, 2, 0, 4, 5}, res);
+    }
+    {
+        var source = [_]u8{7, 1, 2, 3, 4, 5, 6, 0};
+        var dest: [256]u8 = undefined;
+        const res = try decode(&source, &dest);
+        try expectEqualSlices(u8, &[_]u8{1, 2, 3, 4, 5, 6}, res);
+    }
+    {
+        var source = [_]u8{1} ** 259;
+        source[0] = 0xFF;
+        source[255] = 3;
+        source[258] = 0;
+        var dest: [1000]u8 = undefined;
+        const res = try decode(&source, &dest);
 
-    var res_bytes = try decode(reader, &buffer);
-    try std.testing.expectEqual(0, res_bytes.len);
-
-    std.debug.print("{s}\n", .{"buffer with only 0 as length prefix"});
-    var buffer_input_1 = [_]u8{0};
-    buffer = undefined;
-    stream = std.io.fixedBufferStream(&buffer_input_1);
-    reader = stream.reader().any();
-
-    res_bytes = try decode(reader, &buffer);
-    try std.testing.expectEqual(0, res_bytes.len);
-
-    std.debug.print("{s}\n", .{"buffer with only 0 as length prefix, and termination byte"});
-    var buffer_input_2 = [_]u8{ 0, 0 };
-    buffer = undefined;
-    stream = std.io.fixedBufferStream(&buffer_input_2);
-    reader = stream.reader().any();
-
-    res_bytes = try decode(reader, &buffer);
-    try std.testing.expectEqual(0, res_bytes.len);
-
-    std.debug.print("{s}\n", .{"overhead byte past pass the max bound"});
-    var buffer_input_3 = [_]u8{ 255, 2, 5, 0 };
-    buffer = undefined;
-    stream = std.io.fixedBufferStream(&buffer_input_3);
-    reader = stream.reader().any();
-
-    var res = decode(reader, &buffer);
-    try std.testing.expectEqual(Error.OverheadByteOutOfBounds, res);
-
-    std.debug.print("{s}\n", .{"next zero bytes points to out of array"});
-    var buffer_input_4 = [_]u8{ 2, 2, 5, 2, 0 };
-    buffer = undefined;
-    stream = std.io.fixedBufferStream(&buffer_input_4);
-    reader = stream.reader().any();
-
-    res = decode(reader, &buffer);
-    try std.testing.expectEqual(Error.OverheadByteOutOfBounds, res);
-
-    std.debug.print("{s}\n", .{"valid message"});
-    var buffer_input_6 = [_]u8{ 1, 3, 6, 6, 4, 6, 6, 6, 0 };
-    buffer = undefined;
-    stream = std.io.fixedBufferStream(&buffer_input_6);
-    reader = stream.reader().any();
-
-    res_bytes = try decode(reader, &buffer);
-    try std.testing.expectEqual(7, res_bytes.len);
-
-    std.debug.print("{s}\n", .{"valid message without payload"});
-    var buffer_input_7 = [_]u8{ 1, 0 };
-    buffer = undefined;
-    stream = std.io.fixedBufferStream(&buffer_input_7);
-    reader = stream.reader().any();
-
-    res_bytes = try decode(reader, &buffer);
-    try std.testing.expectEqual(0, res_bytes.len);
+        const exp = [_]u8{1} ** 256;
+        try expectEqual(exp.len, res.len);
+        try expectEqual(exp[0], res[0]);
+        try expectEqual(exp[1], res[1]);
+        try expectEqual(exp[255], res[255]);
+        try expectEqualSlices(u8, &exp, res);
+    }
 }
+
+// test "decode" {
+//     std.debug.print("{s}\n", .{"empty input buffer"});
+//     var buffer_input_0 = [_]u8{};
+//     var buffer: [256]u8 = undefined;
+//     var stream = std.io.fixedBufferStream(&buffer_input_0);
+//     var reader = stream.reader().any();
+//
+//     var res_bytes = try decode(reader, &buffer);
+//     try std.testing.expectEqual(0, res_bytes.len);
+//
+//     std.debug.print("{s}\n", .{"buffer with only 0 as length prefix"});
+//     var buffer_input_1 = [_]u8{0};
+//     buffer = undefined;
+//     stream = std.io.fixedBufferStream(&buffer_input_1);
+//     reader = stream.reader().any();
+//
+//     res_bytes = try decode(reader, &buffer);
+//     try std.testing.expectEqual(0, res_bytes.len);
+//
+//     std.debug.print("{s}\n", .{"buffer with only 0 as length prefix, and termination byte"});
+//     var buffer_input_2 = [_]u8{ 0, 0 };
+//     buffer = undefined;
+//     stream = std.io.fixedBufferStream(&buffer_input_2);
+//     reader = stream.reader().any();
+//
+//     res_bytes = try decode(reader, &buffer);
+//     try std.testing.expectEqual(0, res_bytes.len);
+//
+//     std.debug.print("{s}\n", .{"overhead byte past pass the max bound"});
+//     var buffer_input_3 = [_]u8{ 255, 2, 5, 0 };
+//     buffer = undefined;
+//     stream = std.io.fixedBufferStream(&buffer_input_3);
+//     reader = stream.reader().any();
+//
+//     var res = decode(reader, &buffer);
+//     try std.testing.expectEqual(Error.OverheadByteOutOfBounds, res);
+//
+//     std.debug.print("{s}\n", .{"next zero bytes points to out of array"});
+//     var buffer_input_4 = [_]u8{ 2, 2, 5, 2, 0 };
+//     buffer = undefined;
+//     stream = std.io.fixedBufferStream(&buffer_input_4);
+//     reader = stream.reader().any();
+//
+//     res = decode(reader, &buffer);
+//     try std.testing.expectEqual(Error.OverheadByteOutOfBounds, res);
+//
+//     std.debug.print("{s}\n", .{"valid message"});
+//     var buffer_input_6 = [_]u8{ 1, 3, 6, 6, 4, 6, 6, 6, 0 };
+//     buffer = undefined;
+//     stream = std.io.fixedBufferStream(&buffer_input_6);
+//     reader = stream.reader().any();
+//
+//     res_bytes = try decode(reader, &buffer);
+//     try std.testing.expectEqual(7, res_bytes.len);
+//
+//     std.debug.print("{s}\n", .{"valid message without payload"});
+//     var buffer_input_7 = [_]u8{ 1, 0 };
+//     buffer = undefined;
+//     stream = std.io.fixedBufferStream(&buffer_input_7);
+//     reader = stream.reader().any();
+//
+//     res_bytes = try decode(reader, &buffer);
+//     try std.testing.expectEqual(0, res_bytes.len);
+// }
 
