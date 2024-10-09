@@ -72,7 +72,7 @@ pub fn encode(source: []u8, dest: []u8) Error![]u8 {
 /// require less logic is more efficient
 /// 256 - overhead byte - zero byte
 /// [overhead byte, data, zero byte]
-/// returned slice is the 
+/// returned slice is the
 pub fn encode_short(source: []u8, dest: []u8) Error![]u8 {
     if (source.len > source_max_len) {
         return Error.PayloadTooLong;
@@ -111,7 +111,7 @@ pub fn encode_short(source: []u8, dest: []u8) Error![]u8 {
     }
     dest[0] = @as(u8, @intCast(last_zero_position));
 
-    return dest[0..new_dest_len]; 
+    return dest[0..new_dest_len];
 }
 
 /// encodes message without the limit and without the check for short message
@@ -147,9 +147,9 @@ pub fn encode_long(source: []u8, dest: []u8) Error![]u8 {
 
     j += 1;
     dest[j] = 0;
-    dest[zero_pos] = @as(u8, @intCast(j - zero_pos)); 
+    dest[zero_pos] = @as(u8, @intCast(j - zero_pos));
 
-    return dest[0..j + 1]; 
+    return dest[0 .. j + 1];
 }
 
 pub fn decode(source: []u8, dest: []u8) Error![]u8 {
@@ -157,42 +157,28 @@ pub fn decode(source: []u8, dest: []u8) Error![]u8 {
         return Error.PayloadTooShort;
     }
 
-    // source iterator
-    var i: usize = 0;
-    var offset = source[0];
-    i += 1;
+    var j: usize = 0; // destination iterator
+    var i: usize = 1; // skip overhead byte
+    var next_zero: usize = source[0]; // overhead byte
 
-    // destination iterator
-    var j: usize = 0;
+    for (1..source.len - 1) |_| {
+        if (i == next_zero) {
+            if (i - next_zero != 0xFF) {
+                dest[j] = 0;
+                j += 1;
+            }
 
-    for (i..source.len - 1) |_| {
-
-        std.debug.print("--> {}, {}\n", .{i, offset});
-        for (i..i + offset - 1) |k| {
-            std.debug.print("{}, {}, {}, {}\n", .{i, k, source[k], offset});
-            dest[j] = source[k];
-            j += 1;
+            next_zero = i + source[i];
             i += 1;
-        }
-
-        std.debug.print("--> {}, {}\n", .{j, source[i]});
-
-        offset = source[i];
-        if (offset == 0) {
-            break;
-        }
-
-        i += 1;
-
-        if (offset == 0xFF) {
             continue;
         }
 
-        dest[j] = 0;
+        dest[j] = source[i];
         j += 1;
+        i += 1;
     }
 
-    return dest[0..j - 1];
+    return dest[0..j];
 }
 
 // fn decode(reader: std.io.AnyReader, buf: []u8) anyerror![]u8 {
@@ -285,7 +271,7 @@ test "encode_short" {
         const source = [_]u8{};
         var dest: [256]u8 = undefined;
         const res = try encode_short(&source, &dest);
-        try expectEqualSlices(u8, &[_]u8{1, 0}, res);
+        try expectEqualSlices(u8, &[_]u8{ 1, 0 }, res);
     }
     {
         // empty output
@@ -338,36 +324,36 @@ test "encode_short" {
     }
     {
         // simple case without any zero bytes
-        var source = [_]u8{1, 2, 3, 4};
+        var source = [_]u8{ 1, 2, 3, 4 };
         var dest: [256]u8 = undefined;
         const res = try encode_short(&source, &dest);
-        try expectEqualSlices(u8, &[_]u8{5, 1, 2, 3, 4, 0}, res);
+        try expectEqualSlices(u8, &[_]u8{ 5, 1, 2, 3, 4, 0 }, res);
     }
     {
         // simple case with single zero byte
-        var source = [_]u8{1, 2, 0, 4, 5};
+        var source = [_]u8{ 1, 2, 0, 4, 5 };
         var dest: [256]u8 = undefined;
         const res = try encode_short(&source, &dest);
-        try expectEqualSlices(u8, &[_]u8{3, 1, 2, 3, 4, 5, 0}, res);
+        try expectEqualSlices(u8, &[_]u8{ 3, 1, 2, 3, 4, 5, 0 }, res);
     }
     {
         // input with single zero byte
         var source = [_]u8{0};
         var dest: [256]u8 = undefined;
         const res = try encode_short(&source, &dest);
-        try expectEqualSlices(u8, &[_]u8{1, 1, 0}, res);
+        try expectEqualSlices(u8, &[_]u8{ 1, 1, 0 }, res);
     }
     {
-        var source = [_]u8{0, 0};
+        var source = [_]u8{ 0, 0 };
         var dest: [256]u8 = undefined;
         const res = try encode_short(&source, &dest);
-        try expectEqualSlices(u8, &[_]u8{1, 1, 1, 0}, res);
+        try expectEqualSlices(u8, &[_]u8{ 1, 1, 1, 0 }, res);
     }
     {
-        var source = [_]u8{0, 1, 0};
+        var source = [_]u8{ 0, 1, 0 };
         var dest: [256]u8 = undefined;
         const res = try encode_short(&source, &dest);
-        try expectEqualSlices(u8, &[_]u8{1, 2, 1, 1, 0}, res);
+        try expectEqualSlices(u8, &[_]u8{ 1, 2, 1, 1, 0 }, res);
     }
     {
         // actual max size without zero bytes
@@ -398,17 +384,17 @@ test "encode_long" {
     }
     {
         // try to encode some valid short message
-        var source = [_]u8{1, 2, 3, 4, 5};
+        var source = [_]u8{ 1, 2, 3, 4, 5 };
         var dest: [10]u8 = undefined;
         const res = try encode_long(&source, &dest);
-        try expectEqualSlices(u8, &[_]u8{6, 1, 2, 3, 4, 5, 0}, res);
+        try expectEqualSlices(u8, &[_]u8{ 6, 1, 2, 3, 4, 5, 0 }, res);
     }
     {
         // try to encode some valid short message with some zero bytes
-        var source = [_]u8{1, 0, 2, 3, 0, 4, 5};
+        var source = [_]u8{ 1, 0, 2, 3, 0, 4, 5 };
         var dest: [10]u8 = undefined;
         const res = try encode_long(&source, &dest);
-        try expectEqualSlices(u8, &[_]u8{2, 1, 3, 2, 3, 3, 4, 5, 0}, res);
+        try expectEqualSlices(u8, &[_]u8{ 2, 1, 3, 2, 3, 3, 4, 5, 0 }, res);
     }
     {
         // try to encode some valid short message with some zero bytes
@@ -445,7 +431,6 @@ test "encode_long" {
         try expectEqualSlices(u8, &exp, res);
     }
 }
-
 
 // test "encode_len" {
 //     std.debug.print("bytes with one zero\n", .{});
@@ -484,16 +469,23 @@ test "encode_long" {
 
 test "decode" {
     {
-        var source = [_]u8{3, 1, 2, 3, 4, 5, 0};
+        var source = [_]u8{ 3, 1, 2, 3, 4, 5, 0 };
         var dest: [256]u8 = undefined;
         const res = try decode(&source, &dest);
-        try expectEqualSlices(u8, &[_]u8{1, 2, 0, 4, 5}, res);
+        try expectEqualSlices(u8, &[_]u8{ 1, 2, 0, 4, 5 }, res);
     }
     {
-        var source = [_]u8{7, 1, 2, 3, 4, 5, 6, 0};
+        var source = [_]u8{ 7, 1, 2, 3, 4, 5, 6, 0 };
         var dest: [256]u8 = undefined;
         const res = try decode(&source, &dest);
-        try expectEqualSlices(u8, &[_]u8{1, 2, 3, 4, 5, 6}, res);
+        try expectEqualSlices(u8, &[_]u8{ 1, 2, 3, 4, 5, 6 }, res);
+    }
+    {
+        // all zero
+        var source = [_]u8{ 1, 1, 1, 1, 1, 1, 1, 0 };
+        var dest: [256]u8 = undefined;
+        const res = try decode(&source, &dest);
+        try expectEqualSlices(u8, &[_]u8{ 0, 0, 0, 0, 0, 0 }, res);
     }
     {
         var source = [_]u8{1} ** 259;
@@ -508,6 +500,28 @@ test "decode" {
         try expectEqual(exp[0], res[0]);
         try expectEqual(exp[1], res[1]);
         try expectEqual(exp[255], res[255]);
+        try expectEqualSlices(u8, &exp, res);
+    }
+    {
+        var source = [_]u8{1} ** 1000;
+        source[0] = 0xFF;
+        source[255] = 0xFF;
+        source[510] = 0xFF;
+        source[765] = 234;
+        source[999] = 0;
+        var dest: [1000]u8 = undefined;
+        const res = try decode(&source, &dest);
+
+        const exp = [_]u8{1} ** 997;
+        try expectEqual(exp.len, res.len);
+        try expectEqual(exp[0], res[0]);
+        try expectEqual(exp[1], res[1]);
+        try expectEqual(exp[255], res[255]);
+        try expectEqual(exp[510], res[510]);
+        try expectEqual(exp[764], res[764]);
+        try expectEqual(exp[765], res[765]);
+        try expectEqual(exp[766], res[766]);
+        try expectEqual(exp[996], res[996]);
         try expectEqualSlices(u8, &exp, res);
     }
 }
@@ -576,4 +590,3 @@ test "decode" {
 //     res_bytes = try decode(reader, &buffer);
 //     try std.testing.expectEqual(0, res_bytes.len);
 // }
-
