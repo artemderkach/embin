@@ -15,6 +15,14 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const serial = b.dependency("serial", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.root_module.addImport("serial", serial.module("serial"));
+    // exe.linkLibrary(serial.artifact("serial"));
+
+
     // @import("system_sdk").addLibraryPathsTo(exe);
 
     // const zglfw = b.dependency("zglfw", .{
