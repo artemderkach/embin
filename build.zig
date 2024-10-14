@@ -15,6 +15,13 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    // command line arguments parser
+    const clap = b.dependency("clap", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.root_module.addImport("clap", clap.module("clap"));
+
     const serial = b.dependency("serial", .{
         .target = target,
         .optimize = optimize,

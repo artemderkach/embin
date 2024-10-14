@@ -7,6 +7,10 @@
         .zgui = .{ .path = "../../zig-gamedev/libs/zgui" },
         .zopengl = .{ .path = "../../zig-gamedev/libs/zopengl" },
 
+        .clap = .{
+            .url = "https://github.com/ZigEmbeddedGroup/serial/archive/e9207ad2b86131fa9f0dfbd5c68cafd67f00fe64.tar.gz",
+            .hash = "d71cc39a94f3e6ccbad00c25d350c9147de4df9f",
+        },
         .serial = .{
             .url = "https://github.com/ZigEmbeddedGroup/serial/archive/13cc57bd170decc987660aa35a177c668c3e9cc5.tar.gz",
             .hash = "122054cbec27a1894b4e8568cd743d93e92de0be7a9775b90dd60932bdaddd861a5e",
@@ -32,6 +36,10 @@
         .dawn_x86_64_macos = .{
             .url = "https://github.com/michal-z/webgpu_dawn-x86_64-macos/archive/901716b10b31ce3e0d3fe479326b41e91d59c661.tar.gz",
             .hash = "1220b1f02f2f7edd98a078c64e3100907d90311d94880a3cc5927e1ac009d002667a",
+        },
+        .clap = .{
+            .url = "git+https://github.com/Hejsil/zig-clap#e9207ad2b86131fa9f0dfbd5c68cafd67f00fe64",
+            .hash = "1220cb2f28680ef73c1020bfd8c7b08de38821b0bc19b5469f60dcf813f1d8455dbd",
         },
     },
     .paths = .{
