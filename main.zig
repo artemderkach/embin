@@ -9,8 +9,8 @@ pub fn main() !void {
     }
 
     std.debug.print("There are {d} args:\n", .{std.os.argv.len});
-    for(std.os.argv) |arg| {
-        std.debug.print("  {s}, {}, {any}\n", .{arg, @TypeOf(arg), std.mem.span(arg)});
+    for (std.os.argv) |arg| {
+        std.debug.print("  {s}, {}, {any}\n", .{ arg, @TypeOf(arg), std.mem.span(arg) });
     }
 
     const inputCommand = std.mem.span(std.os.argv[1]);
@@ -49,4 +49,3 @@ fn readSerial() !void {
 
     return;
 }
-
