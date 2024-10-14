@@ -4,6 +4,7 @@ const serial = @import("serial");
 
 pub fn main() !void {
     const commandSerial = "serial";
+
     if (std.os.argv.len <= 1) {
         return;
     }
@@ -14,18 +15,23 @@ pub fn main() !void {
     }
 
     const inputCommand = std.mem.span(std.os.argv[1]);
+
+    var subcommand: []u8 = undefined;
+    if (std.os.argv.len >= 3) {
+        subcommand = std.mem.span(std.os.argv[2]);
+    }
+
     if (std.mem.eql(u8, inputCommand, commandSerial)) {
         std.debug.print("applying serial command\n", .{});
-        try readSerial();
+        // var port: []u8 = undefined;
+        try readSerial(subcommand);
     }
 }
 
-fn readSerial() !void {
-    const port_name = "/dev/ttys004";
-
-    var s = std.fs.cwd().openFile(port_name, .{ .mode = .read_write }) catch |err| switch (err) {
+fn readSerial(port: []u8) !void {
+    var s = std.fs.cwd().openFile(port, .{ .mode = .read_write }) catch |err| switch (err) {
         error.FileNotFound => {
-            std.debug.print("Invalid config: the serial port '{s}' does not exist.\n", .{port_name});
+            std.debug.print("Invalid config: the serial port '{s}' does not exist.\n", .{port});
             return;
         },
         else => unreachable,
