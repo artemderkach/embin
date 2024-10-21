@@ -16,11 +16,11 @@ pub fn build(b: *std.Build) void {
     });
 
     // command line arguments parser
-    const clap = b.dependency("clap", .{
+    const args = b.dependency("args", .{
         .target = target,
         .optimize = optimize,
     });
-    exe.root_module.addImport("clap", clap.module("clap"));
+    exe.root_module.addImport("args", args.module("args"));
 
     const serial = b.dependency("serial", .{
         .target = target,
@@ -28,7 +28,6 @@ pub fn build(b: *std.Build) void {
     });
     exe.root_module.addImport("serial", serial.module("serial"));
     // exe.linkLibrary(serial.artifact("serial"));
-
 
     // @import("system_sdk").addLibraryPathsTo(exe);
 
@@ -59,5 +58,4 @@ pub fn build(b: *std.Build) void {
     // exe.step.dependOn(&install_content_step.step);
 
     b.installArtifact(exe);
-
 }

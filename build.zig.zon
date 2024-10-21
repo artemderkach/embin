@@ -7,9 +7,9 @@
         .zgui = .{ .path = "../../zig-gamedev/libs/zgui" },
         .zopengl = .{ .path = "../../zig-gamedev/libs/zopengl" },
 
-        .clap = .{
-            .url = "git+https://github.com/Hejsil/zig-clap#c0193e9247335a6c1688b946325060289405de2a",
-            .hash = "12207ee987ce045596cb992cfb15b0d6d9456e50d4721c3061c69dabc2962053644d",
+        .args = .{
+            .url = "git+https://github.com/artemderkach/args#785f76fcf9bfef4abf7addef70e3c1c4d93a25fe",
+            .hash = "1220901fe6ec25cdba3adf529d5506de14bc791d461311d649789213781e6e819a30",
         },
         .serial = .{
             .url = "https://github.com/ZigEmbeddedGroup/serial/archive/13cc57bd170decc987660aa35a177c668c3e9cc5.tar.gz",
