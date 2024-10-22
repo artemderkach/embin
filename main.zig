@@ -19,6 +19,37 @@ var config = struct {
 
 pub fn main() !void {
     try args.parse(&config);
+
+    if (config.serial.listen.cmd.called) {
+        std.debug.print("serial listen\n", .{});
+        var s = std.fs.cwd().openFile(serial.port.value, .{ .mode = .read_write }) catch |err| switch (err) {
+            error.FileNotFound => {
+                std.debug.print("Invalid config: the serial port '{s}' does not exist.\n", .{serial.port.value});
+                return;
+            },
+            else => unreachable,
+        };
+        defer s.close();
+
+        try serial.configureSerialPort(s, serial.SerialConfig{
+            .baud_rate = 115200,
+            .word_size = .eight,
+            .parity = .none,
+            .stop_bits = .one,
+            .handshake = .none,
+        });
+
+        try s.writer().writeAll("Hello, World!\r\n");
+
+        while (true) {
+            const b = try s.reader().readByte();
+            std.debug.print("{s}", .{[_]u8{b}});
+        }
+    }
+
+    if (config.serial.generate.cmd.called) {
+        std.debug.print("serial generate\n", .{});
+    }
 }
 
 pub fn m() !void {
