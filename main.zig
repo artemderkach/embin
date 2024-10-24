@@ -13,7 +13,7 @@ var config = struct {
         generate: struct {
             cmd: args.Cmd() = .{ .name = "listen" },
         } = .{},
-        port: args.Flag(?[]const u8) = .{},
+        port: args.Arg(?[]const u8) = .{},
     } = .{},
 }{};
 
@@ -22,9 +22,11 @@ pub fn main() !void {
 
     if (config.serial.listen.cmd.called) {
         std.debug.print("serial listen\n", .{});
-        var s = std.fs.cwd().openFile(serial.port.value, .{ .mode = .read_write }) catch |err| switch (err) {
+        std.debug.print("port: {s}\n", .{config.serial.port.value.?});
+
+        var s = std.fs.cwd().openFile(config.serial.port.value.?, .{ .mode = .read_write }) catch |err| switch (err) {
             error.FileNotFound => {
-                std.debug.print("Invalid config: the serial port '{s}' does not exist.\n", .{serial.port.value});
+                std.debug.print("Invalid config: the serial port '{any}' does not exist.\n", .{config.serial.port.value});
                 return;
             },
             else => unreachable,

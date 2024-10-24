@@ -8,8 +8,8 @@
         .zopengl = .{ .path = "../../zig-gamedev/libs/zopengl" },
 
         .args = .{
-            .url = "git+https://github.com/artemderkach/args#785f76fcf9bfef4abf7addef70e3c1c4d93a25fe",
-            .hash = "1220901fe6ec25cdba3adf529d5506de14bc791d461311d649789213781e6e819a30",
+            .url = "git+https://github.com/artemderkach/args#fe4c02fc87ab073ed00d0c8ae25ae3819c408b89",
+            .hash = "1220e5911e3eb2de6f972b0d899ce3b87a19b8bbfa714ab69470b76b1330ee2e5c06",
         },
         .serial = .{
             .url = "https://github.com/ZigEmbeddedGroup/serial/archive/13cc57bd170decc987660aa35a177c668c3e9cc5.tar.gz",
