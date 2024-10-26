@@ -5,6 +5,11 @@ const serial = @import("serial");
 const args = @import("args");
 
 var config = struct {
+    listen: struct {
+        cmd: args.Cmd() = .{ .name = "listen" },
+    } = .{},
+    transport: args.Flag() = .{ .long = "transport" },
+
     serial: struct {
         cmd: args.Cmd() = .{ .name = "serial" },
         listen: struct {
@@ -26,10 +31,57 @@ pub fn main() !void {
 
         var s = std.fs.cwd().openFile(config.serial.port.value.?, .{ .mode = .read_write }) catch |err| switch (err) {
             error.FileNotFound => {
-                std.debug.print("Invalid config: the serial port '{any}' does not exist.\n", .{config.serial.port.value});
+                std.debug.print("Invalid config: the serial port '{s}' does not exist.\n", .{config.serial.port.value.?});
                 return;
             },
             else => unreachable,
+        };
+        defer s.close();
+
+        try serial.configureSerialPort(s, serial.SerialConfig{
+            .baud_rate = 115200,
+            .word_size = .eight,
+            .parity = .none,
+            .stop_bits = .one,
+            .handshake = .none,
+        });
+
+        // try s.writer().writeAll("Hello, World!\r\n");
+
+        while (true) {
+            std.debug.print("new loop\n", .{});
+            const b = try s.reader().readByte();
+            std.debug.print("{s}", .{[_]u8{b}});
+        }
+    }
+
+    if (config.serial.generate.cmd.called) {
+        std.debug.print("serial generate\n", .{});
+        var s = std.fs.cwd().openFile(config.serial.port.value.?, .{ .mode = .read_write }) catch |err| switch (err) {
+            error.FileNotFound => {
+                std.debug.print("Invalid config: the serial port '{s}' does not exist.\n", .{config.serial.port.value.?});
+                return;
+            },
+            else => unreachable,
+        };
+        defer s.close();
+        // try serial.configureSerialPort(s, serial.SerialConfig{
+        //     .baud_rate = 115200,
+        //     .word_size = .eight,
+        //     .parity = .none,
+        //     .stop_bits = .one,
+        //     .handshake = .none,
+        // });
+        try s.writeAll("Hello, World!\r\n");
+    }
+
+    if (config.serial.cmd.called) {
+        var s = std.fs.cwd().openFile(config.serial.port.value.?, .{ .mode = .read_write }) catch |err| switch (err) {
+            error.FileNotFound => {
+                std.debug.print("Invalid config: the serial port '{s}' does not exist.\n", .{config.serial.port.value.?});
+                return;
+            },
+            else => return err,
         };
         defer s.close();
 
@@ -45,12 +97,8 @@ pub fn main() !void {
 
         while (true) {
             const b = try s.reader().readByte();
-            std.debug.print("{s}", .{[_]u8{b}});
+            try s.writer().writeByte(b);
         }
-    }
-
-    if (config.serial.generate.cmd.called) {
-        std.debug.print("serial generate\n", .{});
     }
 }
 
