@@ -1,4 +1,5 @@
 const std = @import("std");
+const net = std.net;
 
 const clap = @import("clap");
 const serial = @import("serial");
@@ -75,30 +76,30 @@ pub fn main() !void {
         try s.writeAll("Hello, World!\r\n");
     }
 
-    if (config.serial.cmd.called) {
-        var s = std.fs.cwd().openFile(config.serial.port.value.?, .{ .mode = .read_write }) catch |err| switch (err) {
-            error.FileNotFound => {
-                std.debug.print("Invalid config: the serial port '{s}' does not exist.\n", .{config.serial.port.value.?});
-                return;
-            },
-            else => return err,
-        };
-        defer s.close();
+    if (std.mem.eql(u8, config.transport.value, "tcp")) {
+        var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+        defer _ = gpa.deinit();
+        const allocator = gpa.allocator();
 
-        try serial.configureSerialPort(s, serial.SerialConfig{
-            .baud_rate = 115200,
-            .word_size = .eight,
-            .parity = .none,
-            .stop_bits = .one,
-            .handshake = .none,
+        const loopback = try net.Ip4Address.parse("127.0.0.1", 0);
+        const localhost = net.Address{ .in = loopback };
+        var server = try localhost.listen(.{
+            .reuse_port = true,
         });
+        defer server.deinit();
 
-        try s.writer().writeAll("Hello, World!\r\n");
+        const addr = server.listen_address;
+        print("Listening on {}, access this port to end the program\n", .{addr.getPort()});
 
-        while (true) {
-            const b = try s.reader().readByte();
-            try s.writer().writeByte(b);
-        }
+        var client = try server.accept();
+        defer client.stream.close();
+
+        print("Connection received! {} is sending data.\n", .{client.address});
+
+        const message = try client.stream.reader().readAllAlloc(allocator, 1024);
+        defer allocator.free(message);
+
+        print("{} says {s}\n", .{ client.address, message });
     }
 }
 
