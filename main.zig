@@ -9,7 +9,12 @@ var config = struct {
     listen: struct {
         cmd: args.Cmd() = .{ .name = "listen" },
     } = .{},
-    transport: args.Flag() = .{ .long = "transport" },
+    generate: struct {
+        cmd: args.Cmd() = .{ .name = "generate" },
+    } = .{},
+
+    transport: args.Flag(?[]const u8) = .{ .long = "transport" },
+    port: args.Flag(?u16) = .{ .long = "port", .short = 'p' },
 
     serial: struct {
         cmd: args.Cmd() = .{ .name = "serial" },
@@ -76,7 +81,7 @@ pub fn main() !void {
         try s.writeAll("Hello, World!\r\n");
     }
 
-    if (std.mem.eql(u8, config.transport.value, "tcp")) {
+    if (config.listen.cmd.called and std.mem.eql(u8, config.transport.value.?, "tcp")) {
         var gpa = std.heap.GeneralPurposeAllocator(.{}){};
         defer _ = gpa.deinit();
         const allocator = gpa.allocator();
@@ -100,6 +105,20 @@ pub fn main() !void {
         defer allocator.free(message);
 
         std.debug.print("{} says {s}\n", .{ client.address, message });
+    }
+
+    if (config.generate.cmd.called and std.mem.eql(u8, config.transport.value.?, "tcp")) {
+        const peer = try net.Address.parseIp4("127.0.0.1", config.port.value.?);
+        // Connect to peer
+        const stream = try net.tcpConnectToAddress(peer);
+        defer stream.close();
+        std.debug.print("Connecting to {}\n", .{peer});
+
+        // Sending data to peer
+        const data = "hello zig";
+        var writer = stream.writer();
+        const size = try writer.write(data);
+        std.debug.print("Sending '{s}' to peer, total written: {d} bytes\n", .{ data, size });
     }
 }
 
