@@ -4,6 +4,7 @@ const net = std.net;
 const clap = @import("clap");
 const serial = @import("serial");
 const args = @import("args");
+const Generate = @import("cmd/generate.zig");
 
 var config = struct {
     listen: struct {
