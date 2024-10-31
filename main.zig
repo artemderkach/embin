@@ -5,11 +5,10 @@ const clap = @import("clap");
 const serial = @import("serial");
 const args = @import("args");
 const Generate = @import("cmd/generate.zig");
+const Listen = @import("cmd/listen.zig");
 
 var config = struct {
-    listen: struct {
-        cmd: args.Cmd() = .{ .name = "listen" },
-    } = .{},
+    listen: Listen = .{},
     generate: Generate = .{},
 
     // transport: args.Flag(?[]const u8) = .{ .long = "transport" },
@@ -30,34 +29,36 @@ var config = struct {
 pub fn main() !void {
     try args.parse(&config);
 
-    if (config.serial.listen.cmd.called) {
+    if (config.listen.cmd.called) {
         std.debug.print("serial listen\n", .{});
-        std.debug.print("port: {s}\n", .{config.serial.port.value.?});
+        std.debug.print("port: {any}\n", .{config.serial.port.value});
 
-        var s = std.fs.cwd().openFile(config.serial.port.value.?, .{ .mode = .read_write }) catch |err| switch (err) {
-            error.FileNotFound => {
-                std.debug.print("Invalid config: the serial port '{s}' does not exist.\n", .{config.serial.port.value.?});
-                return;
-            },
-            else => unreachable,
-        };
-        defer s.close();
+        try config.listen.Execute();
 
-        try serial.configureSerialPort(s, serial.SerialConfig{
-            .baud_rate = 115200,
-            .word_size = .eight,
-            .parity = .none,
-            .stop_bits = .one,
-            .handshake = .none,
-        });
-
-        // try s.writer().writeAll("Hello, World!\r\n");
-
-        while (true) {
-            std.debug.print("new loop\n", .{});
-            const b = try s.reader().readByte();
-            std.debug.print("{s}", .{[_]u8{b}});
-        }
+        // var s = std.fs.cwd().openFile(config.serial.port.value.?, .{ .mode = .read_write }) catch |err| switch (err) {
+        //     error.FileNotFound => {
+        //         std.debug.print("Invalid config: the serial port '{s}' does not exist.\n", .{config.serial.port.value.?});
+        //         return;
+        //     },
+        //     else => unreachable,
+        // };
+        // defer s.close();
+        //
+        // try serial.configureSerialPort(s, serial.SerialConfig{
+        //     .baud_rate = 115200,
+        //     .word_size = .eight,
+        //     .parity = .none,
+        //     .stop_bits = .one,
+        //     .handshake = .none,
+        // });
+        //
+        // // try s.writer().writeAll("Hello, World!\r\n");
+        //
+        // while (true) {
+        //     std.debug.print("new loop\n", .{});
+        //     const b = try s.reader().readByte();
+        //     std.debug.print("{s}", .{[_]u8{b}});
+        // }
     }
 
     if (config.serial.generate.cmd.called) {
