@@ -10,12 +10,10 @@ var config = struct {
     listen: struct {
         cmd: args.Cmd() = .{ .name = "listen" },
     } = .{},
-    generate: struct {
-        cmd: args.Cmd() = .{ .name = "generate" },
-    } = .{},
+    generate: Generate = .{},
 
-    transport: args.Flag(?[]const u8) = .{ .long = "transport" },
-    port: args.Flag(?u16) = .{ .long = "port", .short = 'p' },
+    // transport: args.Flag(?[]const u8) = .{ .long = "transport" },
+    // port: args.Flag(?u16) = .{ .long = "port", .short = 'p' },
 
     serial: struct {
         cmd: args.Cmd() = .{ .name = "serial" },
@@ -63,63 +61,69 @@ pub fn main() !void {
     }
 
     if (config.serial.generate.cmd.called) {
-        std.debug.print("serial generate\n", .{});
-        var s = std.fs.cwd().openFile(config.serial.port.value.?, .{ .mode = .read_write }) catch |err| switch (err) {
-            error.FileNotFound => {
-                std.debug.print("Invalid config: the serial port '{s}' does not exist.\n", .{config.serial.port.value.?});
-                return;
-            },
-            else => unreachable,
-        };
-        defer s.close();
-        // try serial.configureSerialPort(s, serial.SerialConfig{
-        //     .baud_rate = 115200,
-        //     .word_size = .eight,
-        //     .parity = .none,
-        //     .stop_bits = .one,
-        //     .handshake = .none,
-        // });
-        try s.writeAll("Hello, World!\r\n");
+        // config.serial.generate.Execute();
+        // config.serial.generate.tra
+        return;
+
+        // std.debug.print("serial generate\n", .{});
+        // var s = std.fs.cwd().openFile(config.serial.port.value.?, .{ .mode = .read_write }) catch |err| switch (err) {
+        //     error.FileNotFound => {
+        //         std.debug.print("Invalid config: the serial port '{s}' does not exist.\n", .{config.serial.port.value.?});
+        //         return;
+        //     },
+        //     else => unreachable,
+        // };
+        // defer s.close();
+        // // try serial.configureSerialPort(s, serial.SerialConfig{
+        // //     .baud_rate = 115200,
+        // //     .word_size = .eight,
+        // //     .parity = .none,
+        // //     .stop_bits = .one,
+        // //     .handshake = .none,
+        // // });
+        // try s.writeAll("Hello, World!\r\n");
     }
 
-    if (config.listen.cmd.called and std.mem.eql(u8, config.transport.value.?, "tcp")) {
-        var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-        defer _ = gpa.deinit();
-        const allocator = gpa.allocator();
+    // if (config.listen.cmd.called and std.mem.eql(u8, config.transport.value.?, "tcp")) {
+    //     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    //     defer _ = gpa.deinit();
+    //     const allocator = gpa.allocator();
+    //
+    //     const loopback = try net.Ip4Address.parse("127.0.0.1", 0);
+    //     const localhost = net.Address{ .in = loopback };
+    //     var server = try localhost.listen(.{
+    //         .reuse_port = true,
+    //     });
+    //     defer server.deinit();
+    //
+    //     const addr = server.listen_address;
+    //     std.debug.print("Listening on {}, access this port to end the program\n", .{addr.getPort()});
+    //
+    //     var client = try server.accept();
+    //     defer client.stream.close();
+    //
+    //     std.debug.print("Connection received! {} is sending data.\n", .{client.address});
+    //
+    //     const message = try client.stream.reader().readAllAlloc(allocator, 1024);
+    //     defer allocator.free(message);
+    //
+    //     std.debug.print("{} says {s}\n", .{ client.address, message });
+    // }
 
-        const loopback = try net.Ip4Address.parse("127.0.0.1", 0);
-        const localhost = net.Address{ .in = loopback };
-        var server = try localhost.listen(.{
-            .reuse_port = true,
-        });
-        defer server.deinit();
+    if (config.generate.cmd.called and std.mem.eql(u8, config.generate.transport.value.?, "tcp")) {
+        try config.generate.Execute();
 
-        const addr = server.listen_address;
-        std.debug.print("Listening on {}, access this port to end the program\n", .{addr.getPort()});
-
-        var client = try server.accept();
-        defer client.stream.close();
-
-        std.debug.print("Connection received! {} is sending data.\n", .{client.address});
-
-        const message = try client.stream.reader().readAllAlloc(allocator, 1024);
-        defer allocator.free(message);
-
-        std.debug.print("{} says {s}\n", .{ client.address, message });
-    }
-
-    if (config.generate.cmd.called and std.mem.eql(u8, config.transport.value.?, "tcp")) {
-        const peer = try net.Address.parseIp4("127.0.0.1", config.port.value.?);
-        // Connect to peer
-        const stream = try net.tcpConnectToAddress(peer);
-        defer stream.close();
-        std.debug.print("Connecting to {}\n", .{peer});
-
-        // Sending data to peer
-        const data = "hello zig";
-        var writer = stream.writer();
-        const size = try writer.write(data);
-        std.debug.print("Sending '{s}' to peer, total written: {d} bytes\n", .{ data, size });
+        // const peer = try net.Address.parseIp4("127.0.0.1", config.port.value.?);
+        // // Connect to peer
+        // const stream = try net.tcpConnectToAddress(peer);
+        // defer stream.close();
+        // std.debug.print("Connecting to {}\n", .{peer});
+        //
+        // // Sending data to peer
+        // const data = "hello zig";
+        // var writer = stream.writer();
+        // const size = try writer.write(data);
+        // std.debug.print("Sending '{s}' to peer, total written: {d} bytes\n", .{ data, size });
     }
 }
 
