@@ -34,31 +34,12 @@ pub fn main() !void {
         std.debug.print("port: {any}\n", .{config.serial.port.value});
 
         try config.listen.Execute();
+    }
 
-        // var s = std.fs.cwd().openFile(config.serial.port.value.?, .{ .mode = .read_write }) catch |err| switch (err) {
-        //     error.FileNotFound => {
-        //         std.debug.print("Invalid config: the serial port '{s}' does not exist.\n", .{config.serial.port.value.?});
-        //         return;
-        //     },
-        //     else => unreachable,
-        // };
-        // defer s.close();
-        //
-        // try serial.configureSerialPort(s, serial.SerialConfig{
-        //     .baud_rate = 115200,
-        //     .word_size = .eight,
-        //     .parity = .none,
-        //     .stop_bits = .one,
-        //     .handshake = .none,
-        // });
-        //
-        // // try s.writer().writeAll("Hello, World!\r\n");
-        //
-        // while (true) {
-        //     std.debug.print("new loop\n", .{});
-        //     const b = try s.reader().readByte();
-        //     std.debug.print("{s}", .{[_]u8{b}});
-        // }
+    if (config.generate.cmd.called) {
+        std.debug.print("port: {any}\n", .{config.serial.port.value});
+
+        try config.generate.Execute();
     }
 
     if (config.serial.generate.cmd.called) {
@@ -111,21 +92,9 @@ pub fn main() !void {
     //     std.debug.print("{} says {s}\n", .{ client.address, message });
     // }
 
-    if (config.generate.cmd.called and std.mem.eql(u8, config.generate.transport.value.?, "tcp")) {
-        try config.generate.Execute();
-
-        // const peer = try net.Address.parseIp4("127.0.0.1", config.port.value.?);
-        // // Connect to peer
-        // const stream = try net.tcpConnectToAddress(peer);
-        // defer stream.close();
-        // std.debug.print("Connecting to {}\n", .{peer});
-        //
-        // // Sending data to peer
-        // const data = "hello zig";
-        // var writer = stream.writer();
-        // const size = try writer.write(data);
-        // std.debug.print("Sending '{s}' to peer, total written: {d} bytes\n", .{ data, size });
-    }
+    // if (config.generate.cmd.called and std.mem.eql(u8, config.generate.transport.value.?, "tcp")) {
+    //     try config.generate.Execute();
+    // }
 }
 
 pub fn m() !void {

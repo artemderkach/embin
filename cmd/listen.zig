@@ -7,7 +7,7 @@ const Self = @This();
 
 cmd: args.Cmd() = .{ .name = "listen" },
 
-port: args.Flag(?[]const u8) = .{ .long = "port", .short = 'p' },
+port: args.Flag(u16) = .{ .long = "port", .short = 'p', .value = 8080 },
 transport: args.Flag(?[]const u8) = .{ .long = "transport", .short = 't' },
 
 pub fn Execute(self: *Self) !void {
@@ -20,8 +20,8 @@ pub fn Execute(self: *Self) !void {
         defer _ = gpa.deinit();
         const allocator = gpa.allocator();
 
-        const loopback = try net.Ip4Address.parse("127.0.0.1", 0);
-        const localhost = net.Address{ .in = loopback };
+        const address = try net.Ip4Address.parse("127.0.0.1", self.port.value);
+        const localhost = net.Address{ .in = address };
         var server = try localhost.listen(.{
             .reuse_port = true,
         });
