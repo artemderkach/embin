@@ -1,6 +1,5 @@
 const std = @import("std");
-
-// const Options = @import("../../build.zig").Options;
+const protobuf = @import("protobuf");
 
 const demo_name = "minimal_zgui_glfw_gl";
 const content_dir = demo_name ++ "_content/";
@@ -27,9 +26,26 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     exe.root_module.addImport("serial", serial.module("serial"));
-    // exe.linkLibrary(serial.artifact("serial"));
 
+    const protobuf_dep = b.dependency("protobuf", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    // and lastly use the dependency as a module
+    exe.root_module.addImport("protobuf", protobuf_dep.module("protobuf"));
     // @import("system_sdk").addLibraryPathsTo(exe);
+    //
+    const gen_proto = b.step("gen-proto", "generates zig files from protocol buffer definitions");
+    const protoc_step = protobuf.RunProtocStep.create(b, protobuf_dep.builder, target, .{
+        // out directory for the generated zig files
+        .destination_directory = b.path("./protobuf/"),
+        .source_files = &.{
+            "./protobuf/simple.proto",
+        },
+        .include_directories = &.{},
+    });
+    gen_proto.dependOn(&protoc_step.step);
 
     // const zglfw = b.dependency("zglfw", .{
     //     // .target = options.target,
