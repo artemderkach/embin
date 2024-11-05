@@ -6,10 +6,12 @@ const serial = @import("serial");
 const args = @import("args");
 const Generate = @import("cmd/generate.zig");
 const Listen = @import("cmd/listen.zig");
+const Random = @import("cmd/random.zig");
 
 var config = struct {
     listen: Listen = .{},
     generate: Generate = .{},
+    random: Random = .{},
 
     // transport: args.Flag(?[]const u8) = .{ .long = "transport" },
     // port: args.Flag(?u16) = .{ .long = "port", .short = 'p' },
@@ -28,6 +30,10 @@ var config = struct {
 
 pub fn main() !void {
     try args.parse(&config);
+
+    if (config.random.cmd.called) {
+        try config.random.Execute();
+    }
 
     if (config.listen.cmd.called) {
         std.debug.print("serial listen\n", .{});

@@ -11,6 +11,10 @@
             .url = "git+https://github.com/artemderkach/args#fe4c02fc87ab073ed00d0c8ae25ae3819c408b89",
             .hash = "1220e5911e3eb2de6f972b0d899ce3b87a19b8bbfa714ab69470b76b1330ee2e5c06",
         },
+        .libxev = .{
+            .url = "git+https://github.com/mitchellh/libxev#6afcde929ee15617db4848055963d1a72e7fb055",
+            .hash = "12208fa7b1c9723ab1e97548595cda3810e881e17e8a7d367eaab75b3408848277d5",
+        },
         .serial = .{
             .url = "https://github.com/ZigEmbeddedGroup/serial/archive/13cc57bd170decc987660aa35a177c668c3e9cc5.tar.gz",
             .hash = "122054cbec27a1894b4e8568cd743d93e92de0be7a9775b90dd60932bdaddd861a5e",

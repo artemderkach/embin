@@ -21,6 +21,12 @@ pub fn build(b: *std.Build) void {
     });
     exe.root_module.addImport("args", args.module("args"));
 
+    const libxev = b.dependency("libxev", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.root_module.addImport("xev", libxev.module("xev"));
+
     const serial = b.dependency("serial", .{
         .target = target,
         .optimize = optimize,
