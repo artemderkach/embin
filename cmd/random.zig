@@ -8,32 +8,33 @@ const Self = @This();
 cmd: args.Cmd() = .{ .name = "random" },
 
 pub fn Execute(_: *Self) !void {
-    std.debug.print("rangom\n", .{});
-
     var loop = try xev.Loop.init(.{});
     defer loop.deinit();
 
-    const w = try xev.Timer.init();
-    defer w.deinit();
+    const addr = std.net.Address.initIp4(.{ 0, 0, 0, 0 }, 8080);
+    var tcp = try xev.TCP.init(addr);
+    try tcp.bind(addr);
+    try tcp.listen(100);
 
-    // 5s timer
     var c: xev.Completion = undefined;
-    w.run(&loop, &c, 5000, void, null, &timerCallback);
+    tcp.accept(&loop, &c, void, null, &callback);
 
+    std.debug.print("rangom\n", .{});
     try loop.run(.until_done);
 
     std.debug.print("done rangom\n", .{});
 }
 
-fn timerCallback(
+fn callback(
     userdata: ?*void,
     loop: *xev.Loop,
     c: *xev.Completion,
-    result: xev.Timer.RunError!void,
+    result: xev.AcceptError!xev.TCP,
 ) xev.CallbackAction {
+    std.debug.print("callback\n", .{});
     _ = userdata;
     _ = loop;
     _ = c;
     _ = result catch unreachable;
-    return .disarm;
+    return .rearm;
 }
