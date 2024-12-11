@@ -2,10 +2,10 @@
     .name = "program",
     .version = "0.0.0",
     .dependencies = .{
-        .system_sdk = .{ .path = "../../zig-gamedev/libs/system-sdk" },
-        .zglfw = .{ .path = "../../zig-gamedev/libs/zglfw" },
-        .zgui = .{ .path = "../../zig-gamedev/libs/zgui" },
-        .zopengl = .{ .path = "../../zig-gamedev/libs/zopengl" },
+        .system_sdk = .{ .path = "../../libs/zig-gamedev/libs/system-sdk" },
+        .zglfw = .{ .path = "../../libs/zig-gamedev/libs/zglfw" },
+        .zgui = .{ .path = "../../libs/zig-gamedev/libs/zgui" },
+        .zopengl = .{ .path = "../../libs/zig-gamedev/libs/zopengl" },
 
         .args = .{
             .url = "git+https://github.com/artemderkach/args#fe4c02fc87ab073ed00d0c8ae25ae3819c408b89",

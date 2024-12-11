@@ -53,31 +53,31 @@ pub fn build(b: *std.Build) void {
     });
     gen_proto.dependOn(&protoc_step.step);
 
-    // const zglfw = b.dependency("zglfw", .{
-    //     // .target = options.target,
-    // });
-    // exe.root_module.addImport("zglfw", zglfw.module("root"));
-    // exe.linkLibrary(zglfw.artifact("glfw"));
-    //
-    // const zopengl = b.dependency("zopengl", .{
-    //     // .target = options.target,
-    // });
-    // exe.root_module.addImport("zopengl", zopengl.module("root"));
-    //
-    // const zgui = b.dependency("zgui", .{
-    //     // .target = options.target,
-    //     .backend = .glfw_opengl3,
-    // });
-    // exe.root_module.addImport("zgui", zgui.module("root"));
-    // exe.linkLibrary(zgui.artifact("imgui"));
-    //
-    // // const content_path = b.pathJoin(&.{ cwd_path, content_dir });
-    // const install_content_step = b.addInstallDirectory(.{
-    //     .source_dir = b.path("./content/"),
-    //     .install_dir = .{ .custom = "" },
-    //     .install_subdir = b.pathJoin(&.{ "bin", "./content/" }),
-    // });
-    // exe.step.dependOn(&install_content_step.step);
+    const zglfw = b.dependency("zglfw", .{
+        // .target = options.target,
+    });
+    exe.root_module.addImport("zglfw", zglfw.module("root"));
+    exe.linkLibrary(zglfw.artifact("glfw"));
+
+    const zopengl = b.dependency("zopengl", .{
+        // .target = options.target,
+    });
+    exe.root_module.addImport("zopengl", zopengl.module("root"));
+
+    const zgui = b.dependency("zgui", .{
+        // .target = options.target,
+        .backend = .glfw_opengl3,
+    });
+    exe.root_module.addImport("zgui", zgui.module("root"));
+    exe.linkLibrary(zgui.artifact("imgui"));
+
+    // const content_path = b.pathJoin(&.{ cwd_path, content_dir });
+    const install_content_step = b.addInstallDirectory(.{
+        .source_dir = b.path("./content/"),
+        .install_dir = .{ .custom = "" },
+        .install_subdir = b.pathJoin(&.{ "bin", "./content/" }),
+    });
+    exe.step.dependOn(&install_content_step.step);
 
     b.installArtifact(exe);
 }
