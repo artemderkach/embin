@@ -43,7 +43,7 @@ pub fn Execute(_: *Self) !void {
     // window.setSizeLimits(400, 400, -1, -1);
 
     glfw.makeContextCurrent(window);
-    glfw.swapInterval(1);
+    glfw.swapInterval(0);
 
     try zopengl.loadCoreProfile(glfw.getProcAddress, gl_major, gl_minor);
 
@@ -93,32 +93,34 @@ pub fn Execute(_: *Self) !void {
 
     const startTime: i64 = std.time.milliTimestamp();
     var fromStart: i64 = 0;
-    var prevTime: i64 = std.time.milliTimestamp();
+    // var prevTime: i64 = std.time.milliTimestamp();
 
     var samplesX: [100]f64 = undefined;
     var samples: [100]f64 = undefined;
 
+    time = std.time.milliTimestamp();
     while (!window.shouldClose() and window.getKey(.escape) != .press) {
+        // std.debug.print("{any}\n", .{std.time.milliTimestamp()});
         fromStart = std.time.milliTimestamp() - startTime;
 
-        std.debug.print("{any}\n", .{prevTime - std.time.milliTimestamp()});
-        prevTime = std.time.milliTimestamp();
+        // std.debug.print("{any}\n", .{prevTime - std.time.milliTimestamp()});
+        // prevTime = std.time.milliTimestamp();
 
-        if (isNextFrame()) {
-            for (samplesX, 0..) |_, i| {
-                samplesX[i] = @as(f64, @floatFromInt(i));
-            }
-
-            for (samples, 0..) |_, i| {
-                samples[i] = @sin(@as(f64, @floatFromInt(i)) * @as(f64, 0.2) + @as(f64, @floatFromInt(fromStart)) * @as(f64, 1.5));
-            }
+        // if (isNextFrame()) {
+        for (samplesX, 0..) |_, i| {
+            samplesX[i] = @as(f64, @floatFromInt(i));
         }
 
-        const first = list.pop();
-        try list.insert(0, first);
+        for (samples, 0..) |_, i| {
+            samples[i] = @sin(@as(f64, @floatFromInt(i)) * @as(f64, 0.2) + @as(f64, @floatFromInt(std.time.milliTimestamp())) * @as(f64, 0.001));
+        }
+        // }
 
-        const first2 = list2.pop();
-        try list2.insert(0, first2);
+        // const first = list.pop();
+        // try list.insert(0, first);
+
+        // const first2 = list2.pop();
+        // try list2.insert(0, first2);
 
         // std.debug.print("{any}", .{list.items});
         // std.debug.print("{any}\n", .{list2.items});
@@ -183,26 +185,37 @@ pub fn Execute(_: *Self) !void {
         zgui.backend.draw();
 
         window.swapBuffers();
+
+        wait();
     }
 }
 
 var time: i64 = undefined;
-const frameDuration: i64 = 1000; // > 60 fps
+const frameDuration: i64 = 13; // > 60 fps
+var currFrame: i64 = 0;
+const frames: i64 = 60;
 
 fn isNextFrame() bool {
-    if (time == undefined) {
-        time = std.time.milliTimestamp();
-    }
-    const currTime = std.time.milliTimestamp();
-    const diff = currTime - time;
-    const remaider = @rem(diff, frameDuration);
+    currFrame += 1;
 
-    if (diff > frameDuration) {
-        time = currTime - remaider;
+    if (currFrame >= frames) {
         return true;
     }
 
     return false;
+}
+
+fn wait() void {
+    const currTime = std.time.milliTimestamp();
+    const timeUsed = currTime - time;
+    const diff = frameDuration - timeUsed;
+
+    if (diff > 0) {
+        std.debug.print("waiting {any}, timeUsed {any}, time {any}, currTime {any}\n", .{ diff, timeUsed, time, currTime });
+        std.time.sleep(std.time.ns_per_ms * @as(u64, @intCast(diff)));
+    }
+
+    time += frameDuration;
 }
 
 var nextCounter: f64 = undefined;
