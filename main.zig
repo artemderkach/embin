@@ -5,21 +5,23 @@ const clap = @import("clap");
 const serial = @import("serial");
 const args = @import("args");
 const Generate = @import("cmd/generate.zig");
-const Listen = @import("cmd/listen.zig");
+const Start = @import("cmd/start.zig");
 const Random = @import("cmd/random.zig");
+const TCP = @import("cmd/tcp.zig");
 
 var config = struct {
-    listen: Listen = .{},
+    start: Start = .{},
     generate: Generate = .{},
     random: Random = .{},
+    tcp: TCP = .{},
 
     // transport: args.Flag(?[]const u8) = .{ .long = "transport" },
     // port: args.Flag(?u16) = .{ .long = "port", .short = 'p' },
 
     serial: struct {
         cmd: args.Cmd() = .{ .name = "serial" },
-        listen: struct {
-            cmd: args.Cmd() = .{ .name = "listen" },
+        Start: struct {
+            cmd: args.Cmd() = .{ .name = "start" },
         } = .{},
         generate: struct {
             cmd: args.Cmd() = .{ .name = "listen" },
@@ -31,15 +33,18 @@ var config = struct {
 pub fn main() !void {
     try args.parse(&config);
 
+    if (config.tcp.cmd.called) {
+        try config.tcp.Execute();
+    }
     if (config.random.cmd.called) {
         try config.random.Execute();
     }
 
-    if (config.listen.cmd.called) {
-        std.debug.print("serial listen\n", .{});
+    if (config.start.cmd.called) {
+        std.debug.print("serial start\n", .{});
         std.debug.print("port: {any}\n", .{config.serial.port.value});
 
-        try config.listen.Execute();
+        try config.start.Execute();
     }
 
     if (config.generate.cmd.called) {

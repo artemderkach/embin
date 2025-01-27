@@ -1,3 +1,8 @@
+//! start command begins main process for application
+//! it will create 2 subprocesses
+//! - process that draws
+//! - process that listens to incoming data (tcp, http, serial)
+//! this 2 subprocesses will communicate via queue
 const std = @import("std");
 const net = std.net;
 
@@ -11,7 +16,7 @@ const ThreadPool = xev.ThreadPool;
 
 const Self = @This();
 
-cmd: args.Cmd() = .{ .name = "listen" },
+cmd: args.Cmd() = .{ .name = "start" },
 
 port: args.Flag(u16) = .{ .long = "port", .short = 'p', .value = 8080 },
 transport: args.Flag(?[]const u8) = .{ .long = "transport", .short = 't' },
@@ -33,8 +38,8 @@ pub fn Execute(_: *Self) !void {
     var handler = try std.Thread.spawn(.{}, run, .{&q});
     defer handler.join();
 
-    // var tp = ThreadPool.init(.{});
-    // defer tp.deinit();
+    var tp = ThreadPool.init(.{});
+    defer tp.deinit();
 
     // var task = ThreadPool.Task{
     //     .callback = callback,

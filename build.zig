@@ -80,4 +80,12 @@ pub fn build(b: *std.Build) void {
     exe.step.dependOn(&install_content_step.step);
 
     b.installArtifact(exe);
+
+    const t = b.addTest(.{
+        .root_source_file = b.path("core/tcp.zig"),
+    });
+    t.root_module.addImport("xev", libxev.module("xev"));
+
+    var tc = b.addRunArtifact(t);
+    b.step("test", "run tests").dependOn(&tc.step);
 }
